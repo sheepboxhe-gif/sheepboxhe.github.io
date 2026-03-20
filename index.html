@@ -17,7 +17,6 @@
             display: flex;
             flex-direction: column;
         }
-        /* 红色头部 */
         .red-header {
             background-color: #d32f2f;
             color: white;
@@ -57,7 +56,6 @@
             font-weight: 500;
         }
 
-        /* 白色主区 */
         .white-main {
             background-color: white;
             max-width: 1300px;
@@ -69,14 +67,12 @@
             flex: 1;
         }
 
-        /* 左右列 */
         .columns {
             display: flex;
             gap: 2rem;
             flex-wrap: wrap;
         }
 
-        /* 左侧导航栏 - 固定宽度 */
         .profile-side {
             flex: 0 0 240px;
             display: flex;
@@ -84,7 +80,6 @@
             gap: 0.5rem;
         }
 
-        /* 个人信息卡片（含统计） */
         .profile-card {
             background: #fafafa;
             border-radius: 24px;
@@ -153,7 +148,6 @@
             color: white;
         }
 
-        /* 统计区域 - 只保留男女 */
         .stats-compact {
             margin-top: 1rem;
             border-top: 1px dashed #ccc;
@@ -188,11 +182,9 @@
             margin: 0.4rem 0;
         }
 
-        /* 右侧内容区 */
         .feed-side {
             flex: 1 1 500px;
         }
-        /* 发帖框 (仅管理员可见) */
         .post-box {
             background: #f7f9fc;
             border-radius: 24px;
@@ -247,7 +239,6 @@
             background-color: #b71c1c;
         }
 
-        /* 单条帖子卡片 */
         .single-post {
             background: white;
             border-radius: 28px;
@@ -327,7 +318,6 @@
             font-weight: 600;
         }
 
-        /* 删除按钮 (垃圾桶) - 仅管理员可见 */
         .delete-post-btn {
             position: absolute;
             top: 20px;
@@ -352,7 +342,6 @@
             border-color: #d32f2f;
         }
 
-        /* 评论区 & 回复 */
         .comments-section {
             margin-top: 0.8rem;
             border-top: 1px solid #e6edf5;
@@ -472,7 +461,6 @@
             cursor: pointer;
         }
 
-        /* 空帖子提示 */
         .empty-post {
             text-align: center;
             padding: 3rem 1rem;
@@ -480,7 +468,6 @@
             font-size: 1.1rem;
         }
 
-        /* 模态框 (同前) */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -585,7 +572,6 @@
 
     <main class="white-main">
         <div class="columns">
-            <!-- 左侧导航栏 -->
             <div class="profile-side">
                 <aside class="profile-card" id="profileCard">
                     <div class="edit-icon" id="editProfileBtn"><i class="fas fa-pencil-alt"></i></div>
@@ -597,7 +583,6 @@
                     </div>
                     <div id="adminBadge" class="admin-badge hidden">管理员</div>
 
-                    <!-- 统计区域 -->
                     <div class="stats-compact" id="statsPanel">
                         <h4><i class="fas fa-chart-bar"></i> 访问统计</h4>
                         <div class="stat-row">
@@ -631,7 +616,6 @@
             </div>
 
             <section class="feed-side">
-                <!-- 发帖框 (仅管理员可见) 无图片功能 -->
                 <div class="post-box" id="postBox">
                     <div class="poster-info">
                         <span class="mini-avatar" id="posterAvatar">👨</span>
@@ -643,14 +627,12 @@
                     </div>
                 </div>
 
-                <!-- 单条帖子容器 -->
                 <div id="singlePostContainer"></div>
                 <footer style="margin-top:1rem; color:#aaa;">✨ 每次新会话都会增加浏览数与访问统计</footer>
             </section>
         </div>
     </main>
 
-    <!-- 模态框：首次打开弹出，设置个人信息，管理员密码固定为 1 -->
     <div id="setupModal" class="modal-overlay">
         <div class="modal-card">
             <h2><i class="fas fa-id-card"></i> 小红薯·实验登记</h2>
@@ -676,7 +658,6 @@
                 <option value="46-60岁">46-60岁</option>
             </select>
 
-            <!-- 管理员密码输入 (固定密码: 1) -->
             <div class="password-field">
                 <input type="password" id="adminPassword" placeholder="管理员密码 (留空为普通用户)">
                 <div class="password-note">* 只有输入正确密码才能成为管理员发帖 (密码为 1)</div>
@@ -693,7 +674,6 @@
 
             // ---------- 全局数据 ----------
             let visitors = [];
-            // 帖子对象（无图片字段）
             let post = {
                 id: 'p001',
                 text: '欢迎来到小红薯实验版！我是管理员。每次新会话（新打开页面）都会记录访问信息并增加浏览数。普通用户可以点赞、评论、回复。',
@@ -730,7 +710,8 @@
                 isAdmin: false
             };
 
-            const SESSION_KEY = 'xiaohongshu_session';
+            // ---------- 会话管理 ----------
+            const SESSION_KEY = 'xiaohongshu_session_v2';  // 改个版本号，避免旧数据干扰
             let sessionId = sessionStorage.getItem(SESSION_KEY);
             if (!sessionId) {
                 sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
@@ -754,7 +735,7 @@
 
             function loadSavedUser() {
                 try {
-                    const saved = localStorage.getItem('xiaohongshu_currentUser');
+                    const saved = localStorage.getItem('xiaohongshu_currentUser_v2');  // 新key，避免旧数据冲突
                     if (saved) {
                         const parsed = JSON.parse(saved);
                         currentUser = { ...currentUser, ...parsed };
@@ -762,13 +743,13 @@
                 } catch (e) {}
             }
             function saveCurrentUser() {
-                localStorage.setItem('xiaohongshu_currentUser', JSON.stringify(currentUser));
+                localStorage.setItem('xiaohongshu_currentUser_v2', JSON.stringify(currentUser));
             }
             loadSavedUser();
 
             function loadPost() {
                 try {
-                    const savedPost = localStorage.getItem('xiaohongshu_post');
+                    const savedPost = localStorage.getItem('xiaohongshu_post_v2');
                     if (savedPost) {
                         const parsed = JSON.parse(savedPost);
                         post = parsed;
@@ -776,7 +757,7 @@
                 } catch (e) {}
             }
             function savePost() {
-                localStorage.setItem('xiaohongshu_post', JSON.stringify(post));
+                localStorage.setItem('xiaohongshu_post_v2', JSON.stringify(post));
             }
             loadPost();
 
@@ -919,7 +900,6 @@
             // ---------- 事件委托 ----------
             function setupDelegation() {
                 document.addEventListener('click', function(e) {
-                    // 点赞帖子
                     if (e.target.closest('#likePostBtn')) {
                         if (!post) return;
                         post.likes += 1;
@@ -927,7 +907,6 @@
                         renderSinglePost();
                     }
 
-                    // 点赞评论
                     if (e.target.closest('.comment-like-btn')) {
                         if (!post) return;
                         const btn = e.target.closest('.comment-like-btn');
@@ -936,7 +915,6 @@
                         if (comment) { comment.likes = (comment.likes || 0) + 1; savePost(); renderSinglePost(); }
                     }
 
-                    // 点赞回复
                     if (e.target.closest('.reply-like-btn')) {
                         if (!post) return;
                         const btn = e.target.closest('.reply-like-btn');
@@ -947,7 +925,6 @@
                         }
                     }
 
-                    // 展开回复输入框
                     if (e.target.closest('.reply-toggle-btn')) {
                         if (!post) return;
                         const btn = e.target.closest('.reply-toggle-btn');
@@ -956,7 +933,6 @@
                         if (area) area.style.display = area.style.display === 'none' ? 'flex' : 'none';
                     }
 
-                    // 提交回复
                     if (e.target.closest('.reply-submit')) {
                         if (!post) return;
                         const btn = e.target.closest('.reply-submit');
@@ -977,7 +953,6 @@
                         }
                     }
 
-                    // 删除帖子 (仅管理员)
                     if (e.target.closest('#deletePostBtn')) {
                         if (!currentUser.isAdmin) return;
                         if (confirm('确定删除此帖子吗？')) {
@@ -1014,12 +989,11 @@
                         alert('请填写文字内容');
                         return;
                     }
-                    // 创建新帖子，保留浏览数
                     post = {
                         id: genId(),
                         text: content,
                         likes: 0,
-                        views: post ? post.views : 0, // 继承之前的浏览数
+                        views: post ? post.views : 0,
                         comments: [],
                         authorName: currentUser.name,
                         authorAvatar: currentUser.avatar
@@ -1097,7 +1071,7 @@
             });
 
             // ---------- 初始化 ----------
-            if (localStorage.getItem('xiaohongshu_currentUser')) {
+            if (localStorage.getItem('xiaohongshu_currentUser_v2')) {
                 if (!visitRecorded) {
                     recordVisit(currentUser.gender, currentUser.age);
                 }
