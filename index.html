@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红薯 · 论文实验统计版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #f9f4eb;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 红色头部 */
+        .red-header {
+            background-color: #d32f2f;
+            color: white;
+            padding: 0.8rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .logo h1 {
+            font-size: 2rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: rgba(255,255,255,0.2);
+            padding: 0.4rem 1.2rem;
+            border-radius: 40px;
+        }
+        .avatar-circle {
+            width: 40px;
+            height: 40px;
+            background: #ffb74d;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .header-user span {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        /* 白色主区 */
+        .white-main {
+            background-color: white;
+            max-width: 1300px;
+            margin: 2rem auto;
+            width: 95%;
+            border-radius: 32px 32px 20px 20px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.05);
+            padding: 2rem 2rem;
+            flex: 1;
+        }
+
+        /* 左右列 */
+        .columns {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* 左侧导航栏 - 固定宽度 */
+        .profile-side {
+            flex: 0 0 240px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        /* 个人信息卡片（含统计） */
+        .profile-card {
+            background: #fafafa;
+            border-radius: 24px;
+            padding: 1.2rem 1rem;
+            border: 1px solid #eee;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+        }
+        .big-avatar {
+            width: 80px;
+            height: 80px;
+            background: #ffb74d;
+            border-radius: 50%;
+            margin: 0 auto 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.2rem;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .info-name {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+        .info-gender, .info-age {
+            font-size: 0.9rem;
+            color: #555;
+            background: #eaeef2;
+            display: inline-block;
+            padding: 0.2rem 0.8rem;
+            border-radius: 30px;
+            margin: 0.1rem 0.1rem;
+        }
+        .admin-badge {
+            background: #d32f2f;
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 30px;
+            margin-top: 0.3rem;
+            display: inline-block;
+        }
+        .edit-icon {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+            color: #d32f2f;
+            font-size: 1rem;
+            border: 1px solid #f0f0f0;
+            transition: 0.2s;
+        }
+        .edit-icon:hover {
+            background: #d32f2f;
+            color: white;
+        }
+
+        /* 统计区域 - 只保留男女 */
+        .stats-compact {
+            margin-top: 1rem;
+            border-top: 1px dashed #ccc;
+            padding-top: 0.8rem;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+        .stats-compact h4 {
+            color: #d32f2f;
+            font-size: 1rem;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.3rem 0;
+            color: #2c3e50;
+        }
+        .stat-row .label {
+            opacity: 0.8;
+        }
+        .stat-row .value {
+            font-weight: 600;
+            color: #1e2b36;
+        }
+        .stat-divider {
+            height: 1px;
+            background: #ddd;
+            margin: 0.4rem 0;
+        }
+
+        /* 右侧内容区 */
+        .feed-side {
+            flex: 1 1 500px;
+        }
+        /* 发帖框 (仅管理员可见) */
+        .post-box {
+            background: #f7f9fc;
+            border-radius: 24px;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #e2e8f0;
+            display: none;
+        }
+        .poster-info {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 0.8rem;
+        }
+        .mini-avatar {
+            width: 42px;
+            height: 42px;
+            background: #ffb74d;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        .post-box textarea {
+            width: 100%;
+            border: 1px solid #d0d9e2;
+            border-radius: 20px;
+            padding: 1rem;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 90px;
+            outline-color: #d32f2f;
+            margin-bottom: 0.8rem;
+        }
+        .post-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0.5rem;
+        }
+        .publish-btn {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 40px;
+            padding: 0.6rem 2rem;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .publish-btn:hover {
+            background-color: #b71c1c;
+        }
+
+        /* 单条帖子卡片 */
+        .single-post {
+            background: white;
+            border-radius: 28px;
+            padding: 1.4rem 1.6rem;
+            border: 1px solid #edf2f7;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.02);
+            position: relative;
+        }
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .post-author-avatar {
+            width: 48px;
+            height: 48px;
+            background: #ffb74d;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.3rem;
+        }
+        .post-author-name {
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+        .post-content {
+            font-size: 1.1rem;
+            margin: 0.8rem 0 1rem 0;
+            line-height: 1.6;
+            background: #fafcff;
+            padding: 0.8rem 1.2rem;
+            border-radius: 20px;
+            word-wrap: break-word;
+        }
+        .post-meta {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+            color: #5e6f8d;
+            font-size: 0.9rem;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .like-area {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.2rem;
+        }
+        .like-btn {
+            background: none;
+            border: 1px solid #e0e7ef;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            color: #4a4a4a;
+            font-weight: 500;
+            padding: 0.3rem 1rem;
+            border-radius: 30px;
+            transition: 0.2s;
+        }
+        .like-btn:hover {
+            background: #fce4e4;
+            color: #d32f2f;
+            border-color: #f5baba;
+        }
+        .like-count {
+            font-weight: 600;
+        }
+
+        /* 删除按钮 (垃圾桶) - 仅管理员可见 */
+        .delete-post-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: 1px solid #e0e7ef;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #d32f2f;
+            font-size: 1.1rem;
+            transition: 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .delete-post-btn:hover {
+            background: #d32f2f;
+            color: white;
+            border-color: #d32f2f;
+        }
+
+        /* 评论区 & 回复 */
+        .comments-section {
+            margin-top: 0.8rem;
+            border-top: 1px solid #e6edf5;
+            padding-top: 1rem;
+        }
+        .comment-item {
+            background: #f2f6fc;
+            border-radius: 18px;
+            padding: 0.6rem 1rem;
+            margin-bottom: 0.6rem;
+        }
+        .comment-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .comment-author {
+            font-weight: 600;
+            color: #d32f2f;
+            margin-right: 0.5rem;
+        }
+        .comment-content {
+            flex: 1;
+        }
+        .comment-like {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .comment-like-btn {
+            background: none;
+            border: none;
+            color: #777;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 20px;
+        }
+        .comment-like-btn:hover {
+            background: #ffe6e6;
+            color: #d32f2f;
+        }
+        .reply-section {
+            margin-left: 1.5rem;
+            margin-top: 0.3rem;
+            border-left: 2px solid #d0d9e2;
+            padding-left: 0.8rem;
+        }
+        .reply-item {
+            background: #ffffffd0;
+            border-radius: 14px;
+            padding: 0.3rem 0.8rem;
+            margin-bottom: 0.3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e2e8f0;
+        }
+        .reply-author {
+            font-weight: 600;
+            color: #2c5282;
+            margin-right: 0.5rem;
+        }
+        .reply-like-btn {
+            background: none;
+            border: none;
+            color: #777;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        .reply-like-btn:hover {
+            color: #d32f2f;
+        }
+        .reply-input-area {
+            display: flex;
+            margin: 0.3rem 0 0.3rem 1.5rem;
+            gap: 0.5rem;
+        }
+        .reply-input {
+            flex: 1;
+            border: 1px solid #ccc;
+            border-radius: 30px;
+            padding: 0.3rem 0.8rem;
+        }
+        .reply-submit {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 0.2rem 1rem;
+            cursor: pointer;
+        }
+        .comment-input-area {
+            display: flex;
+            margin-top: 0.8rem;
+            gap: 0.5rem;
+        }
+        .comment-input {
+            flex: 1;
+            border: 1px solid #ccc;
+            border-radius: 40px;
+            padding: 0.6rem 1rem;
+        }
+        .comment-btn {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 40px;
+            padding: 0.4rem 1.4rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* 空帖子提示 */
+        .empty-post {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #aaa;
+            font-size: 1.1rem;
+        }
+
+        /* 模态框 (同前) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            backdrop-filter: blur(3px);
+        }
+        .modal-card {
+            background: white;
+            max-width: 450px;
+            width: 90%;
+            border-radius: 40px;
+            padding: 2rem 1.8rem;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .modal-card h2 {
+            margin-bottom: 1.2rem;
+            color: #d32f2f;
+            font-size: 2rem;
+        }
+        .emoji-selector {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1.2rem 0;
+        }
+        .emoji-option {
+            font-size: 3rem;
+            border: 3px solid transparent;
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f2f5;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .emoji-option.selected {
+            border-color: #d32f2f;
+            background: #ffefef;
+            transform: scale(1.05);
+        }
+        .modal-card input, .modal-card select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 60px;
+            margin: 0.5rem 0 1rem;
+            outline-color: #d32f2f;
+        }
+        .gender-options {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 1rem 0;
+        }
+        .gender-options label {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .password-field {
+            margin: 0.5rem 0;
+        }
+        .password-note {
+            font-size: 0.8rem;
+            color: #777;
+            text-align: left;
+            margin: 0.2rem 0 1rem;
+        }
+        .modal-save-btn {
+            background: #d32f2f;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 0.9rem;
+            font-size: 1.2rem;
+            border-radius: 60px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 0.8rem;
+        }
+        .hidden { display: none; }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header class="red-header">
+        <div class="logo"><h1>🍠 小红薯</h1></div>
+        <div class="header-user" id="headerUser">
+            <div class="avatar-circle" id="headerAvatar">👨</div>
+            <span id="headerName">访客</span>
+        </div>
+    </header>
+
+    <main class="white-main">
+        <div class="columns">
+            <!-- 左侧导航栏 -->
+            <div class="profile-side">
+                <aside class="profile-card" id="profileCard">
+                    <div class="edit-icon" id="editProfileBtn"><i class="fas fa-pencil-alt"></i></div>
+                    <div class="big-avatar" id="profileAvatar">👨</div>
+                    <div class="info-name" id="profileName">访客</div>
+                    <div>
+                        <span class="info-gender" id="profileGender">男</span>
+                        <span class="info-age" id="profileAge">18-24岁</span>
+                    </div>
+                    <div id="adminBadge" class="admin-badge hidden">管理员</div>
+
+                    <!-- 统计区域 -->
+                    <div class="stats-compact" id="statsPanel">
+                        <h4><i class="fas fa-chart-bar"></i> 访问统计</h4>
+                        <div class="stat-row">
+                            <span class="label">总访问人数：</span>
+                            <span class="value" id="statTotal">0</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat-row">
+                            <span class="label">👨 男：</span>
+                            <span class="value" id="statMale">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="label">👩 女：</span>
+                            <span class="value" id="statFemale">0</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat-row">
+                            <span class="label">18-24岁：</span>
+                            <span class="value" id="statAge1">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="label">25-45岁：</span>
+                            <span class="value" id="statAge2">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="label">46-60岁：</span>
+                            <span class="value" id="statAge3">0</span>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <section class="feed-side">
+                <!-- 发帖框 (仅管理员可见) 无图片功能 -->
+                <div class="post-box" id="postBox">
+                    <div class="poster-info">
+                        <span class="mini-avatar" id="posterAvatar">👨</span>
+                        <span id="posterName">访客</span>
+                    </div>
+                    <textarea id="postInput" placeholder="写点什么 (只有管理员能发帖)"></textarea>
+                    <div class="post-actions">
+                        <button class="publish-btn" id="publishBtn"><i class="fas fa-paper-plane"></i> 发 布</button>
+                    </div>
+                </div>
+
+                <!-- 单条帖子容器 -->
+                <div id="singlePostContainer"></div>
+                <footer style="margin-top:1rem; color:#aaa;">✨ 每次新会话都会增加浏览数与访问统计</footer>
+            </section>
+        </div>
+    </main>
+
+    <!-- 模态框：首次打开弹出，设置个人信息，管理员密码固定为 1 -->
+    <div id="setupModal" class="modal-overlay">
+        <div class="modal-card">
+            <h2><i class="fas fa-id-card"></i> 小红薯·实验登记</h2>
+            <div style="font-weight:500;">选择头像</div>
+            <div class="emoji-selector" id="emojiSelector">
+                <div class="emoji-option" data-emoji="👨">👨</div>
+                <div class="emoji-option" data-emoji="👩">👩</div>
+                <div class="emoji-option" data-emoji="🐱">🐱</div>
+                <div class="emoji-option" data-emoji="☁️">☁️</div>
+            </div>
+            <input type="text" id="modalNameInput" placeholder="你的名字" value="旅行者">
+
+            <div style="font-weight:500; margin-top:0.5rem;">性别</div>
+            <div class="gender-options">
+                <label><input type="radio" name="modalGender" value="男" checked> 男</label>
+                <label><input type="radio" name="modalGender" value="女"> 女</label>
+            </div>
+
+            <div style="font-weight:500;">年龄</div>
+            <select id="modalAge">
+                <option value="18-24岁" selected>18-24岁</option>
+                <option value="25-45岁">25-45岁</option>
+                <option value="46-60岁">46-60岁</option>
+            </select>
+
+            <!-- 管理员密码输入 (固定密码: 1) -->
+            <div class="password-field">
+                <input type="password" id="adminPassword" placeholder="管理员密码 (留空为普通用户)">
+                <div class="password-note">* 只有输入正确密码才能成为管理员发帖 (密码为 1)</div>
+            </div>
+
+            <button class="modal-save-btn" id="modalSaveBtn">进入小红薯</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ---------- 固定管理员密码 ----------
+            const ADMIN_PASSWORD = "1";
+
+            // ---------- 全局数据 ----------
+            let visitors = [];
+            // 帖子对象（无图片字段）
+            let post = {
+                id: 'p001',
+                text: '欢迎来到小红薯实验版！我是管理员。每次新会话（新打开页面）都会记录访问信息并增加浏览数。普通用户可以点赞、评论、回复。',
+                likes: 3,
+                views: 0,
+                comments: [
+                    { 
+                        id: 'c1', 
+                        author: '小雨', 
+                        text: '第一次评论', 
+                        likes: 2, 
+                        replies: [
+                            { id: 'r1', author: '大山', text: '回复：欢迎你！', likes: 1 },
+                            { id: 'r2', author: '小雨', text: '谢谢大山', likes: 0 }
+                        ] 
+                    },
+                    { 
+                        id: 'c2', 
+                        author: '北极熊', 
+                        text: '点赞功能很有意思', 
+                        likes: 0, 
+                        replies: [] 
+                    }
+                ],
+                authorName: '管理员',
+                authorAvatar: '👨'
+            };
+
+            let currentUser = {
+                name: '旅行者',
+                avatar: '👨',
+                gender: '男',
+                age: '18-24岁',
+                isAdmin: false
+            };
+
+            const SESSION_KEY = 'xiaohongshu_session';
+            let sessionId = sessionStorage.getItem(SESSION_KEY);
+            if (!sessionId) {
+                sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+                sessionStorage.setItem(SESSION_KEY, sessionId);
+            }
+
+            const VISIT_RECORDED_KEY = 'visit_recorded_' + sessionId;
+            let visitRecorded = sessionStorage.getItem(VISIT_RECORDED_KEY) === 'true';
+
+            // ---------- 数据持久化 ----------
+            function loadVisitors() {
+                try {
+                    const stored = localStorage.getItem('xiaohongshu_visitors');
+                    if (stored) visitors = JSON.parse(stored);
+                } catch (e) { visitors = []; }
+            }
+            function saveVisitors() {
+                localStorage.setItem('xiaohongshu_visitors', JSON.stringify(visitors));
+            }
+            loadVisitors();
+
+            function loadSavedUser() {
+                try {
+                    const saved = localStorage.getItem('xiaohongshu_currentUser');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        currentUser = { ...currentUser, ...parsed };
+                    }
+                } catch (e) {}
+            }
+            function saveCurrentUser() {
+                localStorage.setItem('xiaohongshu_currentUser', JSON.stringify(currentUser));
+            }
+            loadSavedUser();
+
+            function loadPost() {
+                try {
+                    const savedPost = localStorage.getItem('xiaohongshu_post');
+                    if (savedPost) {
+                        const parsed = JSON.parse(savedPost);
+                        post = parsed;
+                    }
+                } catch (e) {}
+            }
+            function savePost() {
+                localStorage.setItem('xiaohongshu_post', JSON.stringify(post));
+            }
+            loadPost();
+
+            // ---------- 辅助函数 ----------
+            function genId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 6); }
+
+            function updateStatsPanel() {
+                const total = visitors.length;
+                const male = visitors.filter(v => v.gender === '男').length;
+                const female = visitors.filter(v => v.gender === '女').length;
+                const age1 = visitors.filter(v => v.age === '18-24岁').length;
+                const age2 = visitors.filter(v => v.age === '25-45岁').length;
+                const age3 = visitors.filter(v => v.age === '46-60岁').length;
+
+                document.getElementById('statTotal').innerText = total;
+                document.getElementById('statMale').innerText = male;
+                document.getElementById('statFemale').innerText = female;
+                document.getElementById('statAge1').innerText = age1;
+                document.getElementById('statAge2').innerText = age2;
+                document.getElementById('statAge3').innerText = age3;
+            }
+
+            function recordVisit(gender, age) {
+                if (!gender || !age) return;
+                if (visitRecorded) return;
+                const record = {
+                    gender: gender,
+                    age: age,
+                    timestamp: Date.now(),
+                    sessionId: sessionId
+                };
+                visitors.push(record);
+                saveVisitors();
+                sessionStorage.setItem(VISIT_RECORDED_KEY, 'true');
+                visitRecorded = true;
+
+                if (post) {
+                    post.views = (post.views || 0) + 1;
+                    savePost();
+                }
+
+                updateStatsPanel();
+            }
+
+            function refreshAllUI() {
+                document.getElementById('headerAvatar').innerText = currentUser.avatar;
+                document.getElementById('headerName').innerText = currentUser.name;
+                document.getElementById('profileAvatar').innerText = currentUser.avatar;
+                document.getElementById('profileName').innerText = currentUser.name;
+                document.getElementById('profileGender').innerText = currentUser.gender;
+                document.getElementById('profileAge').innerText = currentUser.age;
+                document.getElementById('posterAvatar').innerText = currentUser.avatar;
+                document.getElementById('posterName').innerText = currentUser.name;
+
+                const badge = document.getElementById('adminBadge');
+                if (currentUser.isAdmin) {
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+
+                document.getElementById('postBox').style.display = currentUser.isAdmin ? 'block' : 'none';
+
+                renderSinglePost();
+                updateStatsPanel();
+            }
+
+            function renderSinglePost() {
+                const container = document.getElementById('singlePostContainer');
+                if (!post) {
+                    container.innerHTML = `<div class="empty-post">🍠 暂无帖子，管理员可发布新帖</div>`;
+                    return;
+                }
+                const esc = (str) => String(str).replace(/[&<>]/g, function(m) {
+                    if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m;
+                });
+
+                let commentsHtml = '';
+                post.comments.forEach(cmt => {
+                    let repliesHtml = '';
+                    cmt.replies.forEach(rep => {
+                        repliesHtml += `
+                            <div class="reply-item" data-reply-id="${esc(rep.id)}">
+                                <div><span class="reply-author">${esc(rep.author)}</span> ${esc(rep.text)}</div>
+                                <button class="reply-like-btn" data-reply-id="${esc(rep.id)}"><i class="fa-regular fa-thumbs-up"></i> <span class="reply-like-count">${rep.likes}</span></button>
+                            </div>
+                        `;
+                    });
+
+                    commentsHtml += `
+                        <div class="comment-item" data-comment-id="${esc(cmt.id)}">
+                            <div class="comment-main">
+                                <div><span class="comment-author">${esc(cmt.author)}</span> ${esc(cmt.text)}</div>
+                                <div class="comment-like">
+                                    <button class="comment-like-btn" data-comment-id="${esc(cmt.id)}"><i class="fa-regular fa-thumbs-up"></i> <span class="comment-like-count">${cmt.likes}</span></button>
+                                </div>
+                            </div>
+                            <div class="reply-section" id="replies-${esc(cmt.id)}">
+                                ${repliesHtml}
+                            </div>
+                            <div class="reply-input-area" id="replyInputArea-${esc(cmt.id)}" style="display: none;">
+                                <input type="text" class="reply-input" id="replyInput-${esc(cmt.id)}" placeholder="回复...">
+                                <button class="reply-submit" data-reply-submit="${esc(cmt.id)}">回复</button>
+                            </div>
+                            <button class="reply-toggle-btn" data-reply-toggle="${esc(cmt.id)}" style="background:none; border:none; color:#d32f2f; margin-left:1.5rem; cursor:pointer; font-size:0.85rem;">↩️ 回复</button>
+                        </div>
+                    `;
+                });
+
+                const deleteBtnHtml = currentUser.isAdmin ? 
+                    `<div class="delete-post-btn" id="deletePostBtn" title="删除帖子"><i class="fas fa-trash-alt"></i></div>` : '';
+
+                const postHtml = `
+                    <div class="single-post">
+                        ${deleteBtnHtml}
+                        <div class="post-header">
+                            <div class="post-author-avatar">${esc(post.authorAvatar)}</div>
+                            <span class="post-author-name">${esc(post.authorName)}</span>
+                        </div>
+                        <div class="post-content">${esc(post.text)}</div>
+                        <div class="post-meta">
+                            <span class="meta-item"><i class="fa-regular fa-eye"></i> 浏览 ${post.views}</span>
+                            <span class="meta-item"><i class="fa-regular fa-comment"></i> 评论 ${post.comments.length}</span>
+                        </div>
+                        <div class="like-area">
+                            <button class="like-btn" id="likePostBtn"><i class="fa-regular fa-heart"></i> 点赞 <span class="like-count" id="postLikes">${post.likes}</span></button>
+                        </div>
+                        <div class="comments-section">
+                            ${commentsHtml}
+                            <div class="comment-input-area">
+                                <input type="text" class="comment-input" id="commentInput" placeholder="写评论 (作为当前用户)">
+                                <button class="comment-btn" id="submitCommentBtn">评论</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML = postHtml;
+            }
+
+            // ---------- 事件委托 ----------
+            function setupDelegation() {
+                document.addEventListener('click', function(e) {
+                    // 点赞帖子
+                    if (e.target.closest('#likePostBtn')) {
+                        if (!post) return;
+                        post.likes += 1;
+                        savePost();
+                        renderSinglePost();
+                    }
+
+                    // 点赞评论
+                    if (e.target.closest('.comment-like-btn')) {
+                        if (!post) return;
+                        const btn = e.target.closest('.comment-like-btn');
+                        const commentId = btn.getAttribute('data-comment-id');
+                        const comment = post.comments.find(c => c.id === commentId);
+                        if (comment) { comment.likes = (comment.likes || 0) + 1; savePost(); renderSinglePost(); }
+                    }
+
+                    // 点赞回复
+                    if (e.target.closest('.reply-like-btn')) {
+                        if (!post) return;
+                        const btn = e.target.closest('.reply-like-btn');
+                        const replyId = btn.getAttribute('data-reply-id');
+                        for (let c of post.comments) {
+                            const reply = c.replies.find(r => r.id === replyId);
+                            if (reply) { reply.likes = (reply.likes || 0) + 1; savePost(); renderSinglePost(); break; }
+                        }
+                    }
+
+                    // 展开回复输入框
+                    if (e.target.closest('.reply-toggle-btn')) {
+                        if (!post) return;
+                        const btn = e.target.closest('.reply-toggle-btn');
+                        const commentId = btn.getAttribute('data-reply-toggle');
+                        const area = document.getElementById(`replyInputArea-${commentId}`);
+                        if (area) area.style.display = area.style.display === 'none' ? 'flex' : 'none';
+                    }
+
+                    // 提交回复
+                    if (e.target.closest('.reply-submit')) {
+                        if (!post) return;
+                        const btn = e.target.closest('.reply-submit');
+                        const commentId = btn.getAttribute('data-reply-submit');
+                        const input = document.getElementById(`replyInput-${commentId}`);
+                        const text = input.value.trim();
+                        if (!text) { alert('回复内容不能为空'); return; }
+                        const comment = post.comments.find(c => c.id === commentId);
+                        if (comment) {
+                            comment.replies.push({
+                                id: genId(),
+                                author: currentUser.name,
+                                text: text,
+                                likes: 0
+                            });
+                            savePost();
+                            renderSinglePost();
+                        }
+                    }
+
+                    // 删除帖子 (仅管理员)
+                    if (e.target.closest('#deletePostBtn')) {
+                        if (!currentUser.isAdmin) return;
+                        if (confirm('确定删除此帖子吗？')) {
+                            post = null;
+                            savePost();
+                            renderSinglePost();
+                        }
+                    }
+                });
+
+                document.addEventListener('click', function(e) {
+                    if (e.target && e.target.id === 'submitCommentBtn') {
+                        if (!post) { alert('帖子不存在，无法评论'); return; }
+                        const input = document.getElementById('commentInput');
+                        const text = input.value.trim();
+                        if (!text) { alert('评论不能为空'); return; }
+                        post.comments.push({
+                            id: genId(),
+                            author: currentUser.name,
+                            text: text,
+                            likes: 0,
+                            replies: []
+                        });
+                        savePost();
+                        renderSinglePost();
+                        input.value = '';
+                    }
+                });
+
+                document.getElementById('publishBtn').addEventListener('click', function() {
+                    if (!currentUser.isAdmin) { alert('只有管理员可以发帖'); return; }
+                    const content = document.getElementById('postInput').value.trim();
+                    if (!content) {
+                        alert('请填写文字内容');
+                        return;
+                    }
+                    // 创建新帖子，保留浏览数
+                    post = {
+                        id: genId(),
+                        text: content,
+                        likes: 0,
+                        views: post ? post.views : 0, // 继承之前的浏览数
+                        comments: [],
+                        authorName: currentUser.name,
+                        authorAvatar: currentUser.avatar
+                    };
+                    savePost();
+                    renderSinglePost();
+                    document.getElementById('postInput').value = '';
+                });
+            }
+
+            // ---------- 模态框逻辑 ----------
+            const modal = document.getElementById('setupModal');
+            const modalName = document.getElementById('modalNameInput');
+            const emojiOptions = document.querySelectorAll('.emoji-option');
+            const passwordInput = document.getElementById('adminPassword');
+
+            let selectedEmoji = '👨';
+
+            emojiOptions.forEach(opt => opt.classList.remove('selected'));
+            emojiOptions[0].classList.add('selected');
+            selectedEmoji = '👨';
+
+            emojiOptions.forEach(opt => {
+                opt.addEventListener('click', function() {
+                    emojiOptions.forEach(o => o.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedEmoji = this.getAttribute('data-emoji');
+                });
+            });
+
+            document.querySelectorAll('input[name="modalGender"]').forEach(radio => {
+                if (radio.value === '男') radio.checked = true;
+            });
+
+            document.getElementById('modalSaveBtn').addEventListener('click', function() {
+                const name = modalName.value.trim() || '旅行者';
+                const genderRadio = document.querySelector('input[name="modalGender"]:checked');
+                const gender = genderRadio ? genderRadio.value : '男';
+                const age = document.getElementById('modalAge').value;
+                const password = passwordInput.value.trim();
+
+                const isAdmin = (password === ADMIN_PASSWORD);
+
+                currentUser = {
+                    name: name,
+                    avatar: selectedEmoji,
+                    gender: gender,
+                    age: age,
+                    isAdmin: isAdmin
+                };
+                saveCurrentUser();
+
+                if (!visitRecorded) {
+                    recordVisit(gender, age);
+                }
+
+                refreshAllUI();
+                modal.classList.add('hidden');
+            });
+
+            document.getElementById('editProfileBtn').addEventListener('click', function() {
+                modalName.value = currentUser.name;
+                emojiOptions.forEach(opt => {
+                    if (opt.getAttribute('data-emoji') === currentUser.avatar) {
+                        opt.classList.add('selected');
+                        selectedEmoji = currentUser.avatar;
+                    } else opt.classList.remove('selected');
+                });
+                document.querySelectorAll('input[name="modalGender"]').forEach(radio => {
+                    radio.checked = (radio.value === currentUser.gender);
+                });
+                document.getElementById('modalAge').value = currentUser.age;
+                passwordInput.value = '';
+                modal.classList.remove('hidden');
+            });
+
+            // ---------- 初始化 ----------
+            if (localStorage.getItem('xiaohongshu_currentUser')) {
+                if (!visitRecorded) {
+                    recordVisit(currentUser.gender, currentUser.age);
+                }
+            } else {
+                modal.classList.remove('hidden');
+            }
+
+            refreshAllUI();
+            setupDelegation();
+            updateStatsPanel();
+        })();
+    </script>
+</body>
+</html>
