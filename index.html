@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小红薯 · 论文实验统计版</title>
+    <title>小红薯 · 实时共享版</title>
     <style>
         * {
             margin: 0;
@@ -559,6 +559,9 @@
         }
         .hidden { display: none; }
     </style>
+    <!-- 引入 Firebase SDK (兼容版本) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
@@ -628,7 +631,7 @@
                 </div>
 
                 <div id="singlePostContainer"></div>
-                <footer style="margin-top:1rem; color:#aaa;">✨ 每次新会话都会增加浏览数与访问统计</footer>
+                <footer style="margin-top:1rem; color:#aaa;">✨ 实时共享 · 每次新会话都会增加浏览数与访问统计</footer>
             </section>
         </div>
     </main>
@@ -668,421 +671,467 @@
     </div>
 
     <script>
-        (function() {
-            // ---------- 固定管理员密码 ----------
-            const ADMIN_PASSWORD = "1";
+        // ---------- 初始化 Firebase ----------
+        // 已为您直接嵌入配置
+        const firebaseConfig = {
+          apiKey: "AIzaSyAk15_PsWDxeFUDiUOeD8NCnQO_evJEImk",
+          authDomain: "xiaohongshu-43102.firebaseapp.com",
+          projectId: "xiaohongshu-43102",
+          storageBucket: "xiaohongshu-43102.firebasestorage.app",
+          messagingSenderId: "690475502158",
+          appId: "1:690475502158:web:fa312c36c2d08e46a9511f",
+          measurementId: "G-DHS26WBSCM"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-            // ---------- 全局数据 ----------
-            let visitors = [];
-            let post = {
-                id: 'p001',
-                text: '欢迎来到小红薯实验版！我是管理员。每次新会话（新打开页面）都会记录访问信息并增加浏览数。普通用户可以点赞、评论、回复。',
-                likes: 3,
-                views: 0,
-                comments: [
-                    { 
-                        id: 'c1', 
-                        author: '小雨', 
-                        text: '第一次评论', 
-                        likes: 2, 
-                        replies: [
-                            { id: 'r1', author: '大山', text: '回复：欢迎你！', likes: 1 },
-                            { id: 'r2', author: '小雨', text: '谢谢大山', likes: 0 }
-                        ] 
-                    },
-                    { 
-                        id: 'c2', 
-                        author: '北极熊', 
-                        text: '点赞功能很有意思', 
-                        likes: 0, 
-                        replies: [] 
-                    }
-                ],
-                authorName: '管理员',
-                authorAvatar: '👨'
+        // ---------- 固定管理员密码 ----------
+        const ADMIN_PASSWORD = "1";
+
+        // ---------- 全局数据 ----------
+        let currentUser = {
+            name: '旅行者',
+            avatar: '👨',
+            gender: '男',
+            age: '18-24岁',
+            isAdmin: false
+        };
+
+        // 用于存储帖子数据
+        let post = null;
+        let visitors = [];
+
+        // ---------- 会话管理 ----------
+        const SESSION_KEY = 'xiaohongshu_session_v3';
+        let sessionId = sessionStorage.getItem(SESSION_KEY);
+        if (!sessionId) {
+            sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+            sessionStorage.setItem(SESSION_KEY, sessionId);
+        }
+
+        const VISIT_RECORDED_KEY = 'visit_recorded_' + sessionId;
+        let visitRecorded = sessionStorage.getItem(VISIT_RECORDED_KEY) === 'true';
+
+        // ---------- 加载本地用户信息 ----------
+        function loadSavedUser() {
+            try {
+                const saved = localStorage.getItem('xiaohongshu_currentUser_v3');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    currentUser = { ...currentUser, ...parsed };
+                }
+            } catch (e) {}
+        }
+        function saveCurrentUser() {
+            localStorage.setItem('xiaohongshu_currentUser_v3', JSON.stringify(currentUser));
+        }
+        loadSavedUser();
+
+        // ---------- 辅助函数 ----------
+        function genId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 6); }
+
+        function updateStatsPanel() {
+            const total = visitors.length;
+            const male = visitors.filter(v => v.gender === '男').length;
+            const female = visitors.filter(v => v.gender === '女').length;
+            const age1 = visitors.filter(v => v.age === '18-24岁').length;
+            const age2 = visitors.filter(v => v.age === '25-45岁').length;
+            const age3 = visitors.filter(v => v.age === '46-60岁').length;
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statMale').innerText = male;
+            document.getElementById('statFemale').innerText = female;
+            document.getElementById('statAge1').innerText = age1;
+            document.getElementById('statAge2').innerText = age2;
+            document.getElementById('statAge3').innerText = age3;
+        }
+
+        // ---------- 记录访问 (向 Firestore 写入一条记录) ----------
+        async function recordVisit(gender, age) {
+            if (!gender || !age) return;
+            if (visitRecorded) return;
+            const record = {
+                gender: gender,
+                age: age,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                sessionId: sessionId
             };
-
-            let currentUser = {
-                name: '旅行者',
-                avatar: '👨',
-                gender: '男',
-                age: '18-24岁',
-                isAdmin: false
-            };
-
-            // ---------- 会话管理 ----------
-            const SESSION_KEY = 'xiaohongshu_session_v2';  // 改个版本号，避免旧数据干扰
-            let sessionId = sessionStorage.getItem(SESSION_KEY);
-            if (!sessionId) {
-                sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
-                sessionStorage.setItem(SESSION_KEY, sessionId);
-            }
-
-            const VISIT_RECORDED_KEY = 'visit_recorded_' + sessionId;
-            let visitRecorded = sessionStorage.getItem(VISIT_RECORDED_KEY) === 'true';
-
-            // ---------- 数据持久化 ----------
-            function loadVisitors() {
-                try {
-                    const stored = localStorage.getItem('xiaohongshu_visitors');
-                    if (stored) visitors = JSON.parse(stored);
-                } catch (e) { visitors = []; }
-            }
-            function saveVisitors() {
-                localStorage.setItem('xiaohongshu_visitors', JSON.stringify(visitors));
-            }
-            loadVisitors();
-
-            function loadSavedUser() {
-                try {
-                    const saved = localStorage.getItem('xiaohongshu_currentUser_v2');  // 新key，避免旧数据冲突
-                    if (saved) {
-                        const parsed = JSON.parse(saved);
-                        currentUser = { ...currentUser, ...parsed };
-                    }
-                } catch (e) {}
-            }
-            function saveCurrentUser() {
-                localStorage.setItem('xiaohongshu_currentUser_v2', JSON.stringify(currentUser));
-            }
-            loadSavedUser();
-
-            function loadPost() {
-                try {
-                    const savedPost = localStorage.getItem('xiaohongshu_post_v2');
-                    if (savedPost) {
-                        const parsed = JSON.parse(savedPost);
-                        post = parsed;
-                    }
-                } catch (e) {}
-            }
-            function savePost() {
-                localStorage.setItem('xiaohongshu_post_v2', JSON.stringify(post));
-            }
-            loadPost();
-
-            // ---------- 辅助函数 ----------
-            function genId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 6); }
-
-            function updateStatsPanel() {
-                const total = visitors.length;
-                const male = visitors.filter(v => v.gender === '男').length;
-                const female = visitors.filter(v => v.gender === '女').length;
-                const age1 = visitors.filter(v => v.age === '18-24岁').length;
-                const age2 = visitors.filter(v => v.age === '25-45岁').length;
-                const age3 = visitors.filter(v => v.age === '46-60岁').length;
-
-                document.getElementById('statTotal').innerText = total;
-                document.getElementById('statMale').innerText = male;
-                document.getElementById('statFemale').innerText = female;
-                document.getElementById('statAge1').innerText = age1;
-                document.getElementById('statAge2').innerText = age2;
-                document.getElementById('statAge3').innerText = age3;
-            }
-
-            function recordVisit(gender, age) {
-                if (!gender || !age) return;
-                if (visitRecorded) return;
-                const record = {
-                    gender: gender,
-                    age: age,
-                    timestamp: Date.now(),
-                    sessionId: sessionId
-                };
-                visitors.push(record);
-                saveVisitors();
+            try {
+                await db.collection('visitors').add(record);
                 sessionStorage.setItem(VISIT_RECORDED_KEY, 'true');
                 visitRecorded = true;
 
-                if (post) {
-                    post.views = (post.views || 0) + 1;
-                    savePost();
-                }
-
-                updateStatsPanel();
-            }
-
-            function refreshAllUI() {
-                document.getElementById('headerAvatar').innerText = currentUser.avatar;
-                document.getElementById('headerName').innerText = currentUser.name;
-                document.getElementById('profileAvatar').innerText = currentUser.avatar;
-                document.getElementById('profileName').innerText = currentUser.name;
-                document.getElementById('profileGender').innerText = currentUser.gender;
-                document.getElementById('profileAge').innerText = currentUser.age;
-                document.getElementById('posterAvatar').innerText = currentUser.avatar;
-                document.getElementById('posterName').innerText = currentUser.name;
-
-                const badge = document.getElementById('adminBadge');
-                if (currentUser.isAdmin) {
-                    badge.classList.remove('hidden');
-                } else {
-                    badge.classList.add('hidden');
-                }
-
-                document.getElementById('postBox').style.display = currentUser.isAdmin ? 'block' : 'none';
-
-                renderSinglePost();
-                updateStatsPanel();
-            }
-
-            function renderSinglePost() {
-                const container = document.getElementById('singlePostContainer');
-                if (!post) {
-                    container.innerHTML = `<div class="empty-post">🍠 暂无帖子，管理员可发布新帖</div>`;
-                    return;
-                }
-                const esc = (str) => String(str).replace(/[&<>]/g, function(m) {
-                    if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m;
-                });
-
-                let commentsHtml = '';
-                post.comments.forEach(cmt => {
-                    let repliesHtml = '';
-                    cmt.replies.forEach(rep => {
-                        repliesHtml += `
-                            <div class="reply-item" data-reply-id="${esc(rep.id)}">
-                                <div><span class="reply-author">${esc(rep.author)}</span> ${esc(rep.text)}</div>
-                                <button class="reply-like-btn" data-reply-id="${esc(rep.id)}"><i class="fa-regular fa-thumbs-up"></i> <span class="reply-like-count">${rep.likes}</span></button>
-                            </div>
-                        `;
+                // 更新帖子浏览量
+                if (post && post.id) {
+                    const postRef = db.collection('posts').doc('current');
+                    await postRef.update({
+                        views: firebase.firestore.FieldValue.increment(1)
                     });
+                }
+            } catch (e) {
+                console.error('记录访问失败', e);
+            }
+        }
 
-                    commentsHtml += `
-                        <div class="comment-item" data-comment-id="${esc(cmt.id)}">
-                            <div class="comment-main">
-                                <div><span class="comment-author">${esc(cmt.author)}</span> ${esc(cmt.text)}</div>
-                                <div class="comment-like">
-                                    <button class="comment-like-btn" data-comment-id="${esc(cmt.id)}"><i class="fa-regular fa-thumbs-up"></i> <span class="comment-like-count">${cmt.likes}</span></button>
-                                </div>
-                            </div>
-                            <div class="reply-section" id="replies-${esc(cmt.id)}">
-                                ${repliesHtml}
-                            </div>
-                            <div class="reply-input-area" id="replyInputArea-${esc(cmt.id)}" style="display: none;">
-                                <input type="text" class="reply-input" id="replyInput-${esc(cmt.id)}" placeholder="回复...">
-                                <button class="reply-submit" data-reply-submit="${esc(cmt.id)}">回复</button>
-                            </div>
-                            <button class="reply-toggle-btn" data-reply-toggle="${esc(cmt.id)}" style="background:none; border:none; color:#d32f2f; margin-left:1.5rem; cursor:pointer; font-size:0.85rem;">↩️ 回复</button>
+        // ---------- 从 Firestore 加载访客统计 ----------
+        async function loadVisitorsStats() {
+            try {
+                const snapshot = await db.collection('visitors').get();
+                visitors = snapshot.docs.map(doc => doc.data());
+                updateStatsPanel();
+            } catch (e) {
+                console.error('加载访客统计失败', e);
+            }
+        }
+
+        // ---------- 实时监听帖子变化 ----------
+        function subscribePost() {
+            db.collection('posts').doc('current').onSnapshot((doc) => {
+                if (doc.exists) {
+                    post = { id: doc.id, ...doc.data() };
+                } else {
+                    // 没有帖子，创建默认帖子
+                    const defaultPost = {
+                        text: '欢迎来到小红薯实时版！我是管理员。每次新会话都会记录访问信息并增加浏览数。普通用户可以点赞、评论、回复。',
+                        likes: 3,
+                        views: 0,
+                        comments: [
+                            { 
+                                id: 'c1', 
+                                author: '小雨', 
+                                text: '第一次评论', 
+                                likes: 2, 
+                                replies: [
+                                    { id: 'r1', author: '大山', text: '回复：欢迎你！', likes: 1 },
+                                    { id: 'r2', author: '小雨', text: '谢谢大山', likes: 0 }
+                                ] 
+                            },
+                            { 
+                                id: 'c2', 
+                                author: '北极熊', 
+                                text: '点赞功能很有意思', 
+                                likes: 0, 
+                                replies: [] 
+                            }
+                        ],
+                        authorName: '管理员',
+                        authorAvatar: '👨'
+                    };
+                    db.collection('posts').doc('current').set(defaultPost);
+                    post = defaultPost;
+                }
+                renderSinglePost();
+            });
+        }
+
+        // ---------- 渲染帖子 ----------
+        function renderSinglePost() {
+            const container = document.getElementById('singlePostContainer');
+            if (!post) {
+                container.innerHTML = `<div class="empty-post">🍠 暂无帖子，管理员可发布新帖</div>`;
+                return;
+            }
+            const esc = (str) => String(str).replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m;
+            });
+
+            let commentsHtml = '';
+            post.comments.forEach(cmt => {
+                let repliesHtml = '';
+                cmt.replies.forEach(rep => {
+                    repliesHtml += `
+                        <div class="reply-item" data-reply-id="${esc(rep.id)}">
+                            <div><span class="reply-author">${esc(rep.author)}</span> ${esc(rep.text)}</div>
+                            <button class="reply-like-btn" data-reply-id="${esc(rep.id)}"><i class="fa-regular fa-thumbs-up"></i> <span class="reply-like-count">${rep.likes}</span></button>
                         </div>
                     `;
                 });
 
-                const deleteBtnHtml = currentUser.isAdmin ? 
-                    `<div class="delete-post-btn" id="deletePostBtn" title="删除帖子"><i class="fas fa-trash-alt"></i></div>` : '';
-
-                const postHtml = `
-                    <div class="single-post">
-                        ${deleteBtnHtml}
-                        <div class="post-header">
-                            <div class="post-author-avatar">${esc(post.authorAvatar)}</div>
-                            <span class="post-author-name">${esc(post.authorName)}</span>
-                        </div>
-                        <div class="post-content">${esc(post.text)}</div>
-                        <div class="post-meta">
-                            <span class="meta-item"><i class="fa-regular fa-eye"></i> 浏览 ${post.views}</span>
-                            <span class="meta-item"><i class="fa-regular fa-comment"></i> 评论 ${post.comments.length}</span>
-                        </div>
-                        <div class="like-area">
-                            <button class="like-btn" id="likePostBtn"><i class="fa-regular fa-heart"></i> 点赞 <span class="like-count" id="postLikes">${post.likes}</span></button>
-                        </div>
-                        <div class="comments-section">
-                            ${commentsHtml}
-                            <div class="comment-input-area">
-                                <input type="text" class="comment-input" id="commentInput" placeholder="写评论 (作为当前用户)">
-                                <button class="comment-btn" id="submitCommentBtn">评论</button>
+                commentsHtml += `
+                    <div class="comment-item" data-comment-id="${esc(cmt.id)}">
+                        <div class="comment-main">
+                            <div><span class="comment-author">${esc(cmt.author)}</span> ${esc(cmt.text)}</div>
+                            <div class="comment-like">
+                                <button class="comment-like-btn" data-comment-id="${esc(cmt.id)}"><i class="fa-regular fa-thumbs-up"></i> <span class="comment-like-count">${cmt.likes}</span></button>
                             </div>
                         </div>
+                        <div class="reply-section" id="replies-${esc(cmt.id)}">
+                            ${repliesHtml}
+                        </div>
+                        <div class="reply-input-area" id="replyInputArea-${esc(cmt.id)}" style="display: none;">
+                            <input type="text" class="reply-input" id="replyInput-${esc(cmt.id)}" placeholder="回复...">
+                            <button class="reply-submit" data-reply-submit="${esc(cmt.id)}">回复</button>
+                        </div>
+                        <button class="reply-toggle-btn" data-reply-toggle="${esc(cmt.id)}" style="background:none; border:none; color:#d32f2f; margin-left:1.5rem; cursor:pointer; font-size:0.85rem;">↩️ 回复</button>
                     </div>
                 `;
-                container.innerHTML = postHtml;
+            });
+
+            const deleteBtnHtml = currentUser.isAdmin ? 
+                `<div class="delete-post-btn" id="deletePostBtn" title="删除帖子"><i class="fas fa-trash-alt"></i></div>` : '';
+
+            const postHtml = `
+                <div class="single-post">
+                    ${deleteBtnHtml}
+                    <div class="post-header">
+                        <div class="post-author-avatar">${esc(post.authorAvatar)}</div>
+                        <span class="post-author-name">${esc(post.authorName)}</span>
+                    </div>
+                    <div class="post-content">${esc(post.text)}</div>
+                    <div class="post-meta">
+                        <span class="meta-item"><i class="fa-regular fa-eye"></i> 浏览 ${post.views}</span>
+                        <span class="meta-item"><i class="fa-regular fa-comment"></i> 评论 ${post.comments.length}</span>
+                    </div>
+                    <div class="like-area">
+                        <button class="like-btn" id="likePostBtn"><i class="fa-regular fa-heart"></i> 点赞 <span class="like-count" id="postLikes">${post.likes}</span></button>
+                    </div>
+                    <div class="comments-section">
+                        ${commentsHtml}
+                        <div class="comment-input-area">
+                            <input type="text" class="comment-input" id="commentInput" placeholder="写评论 (作为当前用户)">
+                            <button class="comment-btn" id="submitCommentBtn">评论</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML = postHtml;
+        }
+
+        // ---------- 刷新UI (个人信息部分) ----------
+        function refreshUserUI() {
+            document.getElementById('headerAvatar').innerText = currentUser.avatar;
+            document.getElementById('headerName').innerText = currentUser.name;
+            document.getElementById('profileAvatar').innerText = currentUser.avatar;
+            document.getElementById('profileName').innerText = currentUser.name;
+            document.getElementById('profileGender').innerText = currentUser.gender;
+            document.getElementById('profileAge').innerText = currentUser.age;
+            document.getElementById('posterAvatar').innerText = currentUser.avatar;
+            document.getElementById('posterName').innerText = currentUser.name;
+
+            const badge = document.getElementById('adminBadge');
+            if (currentUser.isAdmin) {
+                badge.classList.remove('hidden');
+                document.getElementById('postBox').style.display = 'block';
+            } else {
+                badge.classList.add('hidden');
+                document.getElementById('postBox').style.display = 'none';
             }
+        }
 
-            // ---------- 事件委托 ----------
-            function setupDelegation() {
-                document.addEventListener('click', function(e) {
-                    if (e.target.closest('#likePostBtn')) {
-                        if (!post) return;
-                        post.likes += 1;
-                        savePost();
-                        renderSinglePost();
-                    }
+        // ---------- 事件委托 ----------
+        function setupDelegation() {
+            document.addEventListener('click', async function(e) {
+                // 点赞帖子
+                if (e.target.closest('#likePostBtn')) {
+                    if (!post) return;
+                    const postRef = db.collection('posts').doc('current');
+                    await postRef.update({
+                        likes: firebase.firestore.FieldValue.increment(1)
+                    });
+                }
 
-                    if (e.target.closest('.comment-like-btn')) {
-                        if (!post) return;
-                        const btn = e.target.closest('.comment-like-btn');
-                        const commentId = btn.getAttribute('data-comment-id');
-                        const comment = post.comments.find(c => c.id === commentId);
-                        if (comment) { comment.likes = (comment.likes || 0) + 1; savePost(); renderSinglePost(); }
-                    }
-
-                    if (e.target.closest('.reply-like-btn')) {
-                        if (!post) return;
-                        const btn = e.target.closest('.reply-like-btn');
-                        const replyId = btn.getAttribute('data-reply-id');
-                        for (let c of post.comments) {
-                            const reply = c.replies.find(r => r.id === replyId);
-                            if (reply) { reply.likes = (reply.likes || 0) + 1; savePost(); renderSinglePost(); break; }
+                // 点赞评论
+                if (e.target.closest('.comment-like-btn')) {
+                    if (!post) return;
+                    const btn = e.target.closest('.comment-like-btn');
+                    const commentId = btn.getAttribute('data-comment-id');
+                    const postRef = db.collection('posts').doc('current');
+                    const newComments = post.comments.map(c => {
+                        if (c.id === commentId) {
+                            c.likes = (c.likes || 0) + 1;
                         }
-                    }
+                        return c;
+                    });
+                    await postRef.update({ comments: newComments });
+                }
 
-                    if (e.target.closest('.reply-toggle-btn')) {
-                        if (!post) return;
-                        const btn = e.target.closest('.reply-toggle-btn');
-                        const commentId = btn.getAttribute('data-reply-toggle');
-                        const area = document.getElementById(`replyInputArea-${commentId}`);
-                        if (area) area.style.display = area.style.display === 'none' ? 'flex' : 'none';
-                    }
+                // 点赞回复
+                if (e.target.closest('.reply-like-btn')) {
+                    if (!post) return;
+                    const btn = e.target.closest('.reply-like-btn');
+                    const replyId = btn.getAttribute('data-reply-id');
+                    const postRef = db.collection('posts').doc('current');
+                    const newComments = post.comments.map(c => {
+                        c.replies = c.replies.map(r => {
+                            if (r.id === replyId) {
+                                r.likes = (r.likes || 0) + 1;
+                            }
+                            return r;
+                        });
+                        return c;
+                    });
+                    await postRef.update({ comments: newComments });
+                }
 
-                    if (e.target.closest('.reply-submit')) {
-                        if (!post) return;
-                        const btn = e.target.closest('.reply-submit');
-                        const commentId = btn.getAttribute('data-reply-submit');
-                        const input = document.getElementById(`replyInput-${commentId}`);
-                        const text = input.value.trim();
-                        if (!text) { alert('回复内容不能为空'); return; }
-                        const comment = post.comments.find(c => c.id === commentId);
-                        if (comment) {
-                            comment.replies.push({
+                // 展开回复输入框
+                if (e.target.closest('.reply-toggle-btn')) {
+                    const btn = e.target.closest('.reply-toggle-btn');
+                    const commentId = btn.getAttribute('data-reply-toggle');
+                    const area = document.getElementById(`replyInputArea-${commentId}`);
+                    if (area) area.style.display = area.style.display === 'none' ? 'flex' : 'none';
+                }
+
+                // 提交回复
+                if (e.target.closest('.reply-submit')) {
+                    if (!post) return;
+                    const btn = e.target.closest('.reply-submit');
+                    const commentId = btn.getAttribute('data-reply-submit');
+                    const input = document.getElementById(`replyInput-${commentId}`);
+                    const text = input.value.trim();
+                    if (!text) { alert('回复内容不能为空'); return; }
+                    const postRef = db.collection('posts').doc('current');
+                    const newComments = post.comments.map(c => {
+                        if (c.id === commentId) {
+                            c.replies.push({
                                 id: genId(),
                                 author: currentUser.name,
                                 text: text,
                                 likes: 0
                             });
-                            savePost();
-                            renderSinglePost();
                         }
-                    }
-
-                    if (e.target.closest('#deletePostBtn')) {
-                        if (!currentUser.isAdmin) return;
-                        if (confirm('确定删除此帖子吗？')) {
-                            post = null;
-                            savePost();
-                            renderSinglePost();
-                        }
-                    }
-                });
-
-                document.addEventListener('click', function(e) {
-                    if (e.target && e.target.id === 'submitCommentBtn') {
-                        if (!post) { alert('帖子不存在，无法评论'); return; }
-                        const input = document.getElementById('commentInput');
-                        const text = input.value.trim();
-                        if (!text) { alert('评论不能为空'); return; }
-                        post.comments.push({
-                            id: genId(),
-                            author: currentUser.name,
-                            text: text,
-                            likes: 0,
-                            replies: []
-                        });
-                        savePost();
-                        renderSinglePost();
-                        input.value = '';
-                    }
-                });
-
-                document.getElementById('publishBtn').addEventListener('click', function() {
-                    if (!currentUser.isAdmin) { alert('只有管理员可以发帖'); return; }
-                    const content = document.getElementById('postInput').value.trim();
-                    if (!content) {
-                        alert('请填写文字内容');
-                        return;
-                    }
-                    post = {
-                        id: genId(),
-                        text: content,
-                        likes: 0,
-                        views: post ? post.views : 0,
-                        comments: [],
-                        authorName: currentUser.name,
-                        authorAvatar: currentUser.avatar
-                    };
-                    savePost();
-                    renderSinglePost();
-                    document.getElementById('postInput').value = '';
-                });
-            }
-
-            // ---------- 模态框逻辑 ----------
-            const modal = document.getElementById('setupModal');
-            const modalName = document.getElementById('modalNameInput');
-            const emojiOptions = document.querySelectorAll('.emoji-option');
-            const passwordInput = document.getElementById('adminPassword');
-
-            let selectedEmoji = '👨';
-
-            emojiOptions.forEach(opt => opt.classList.remove('selected'));
-            emojiOptions[0].classList.add('selected');
-            selectedEmoji = '👨';
-
-            emojiOptions.forEach(opt => {
-                opt.addEventListener('click', function() {
-                    emojiOptions.forEach(o => o.classList.remove('selected'));
-                    this.classList.add('selected');
-                    selectedEmoji = this.getAttribute('data-emoji');
-                });
-            });
-
-            document.querySelectorAll('input[name="modalGender"]').forEach(radio => {
-                if (radio.value === '男') radio.checked = true;
-            });
-
-            document.getElementById('modalSaveBtn').addEventListener('click', function() {
-                const name = modalName.value.trim() || '旅行者';
-                const genderRadio = document.querySelector('input[name="modalGender"]:checked');
-                const gender = genderRadio ? genderRadio.value : '男';
-                const age = document.getElementById('modalAge').value;
-                const password = passwordInput.value.trim();
-
-                const isAdmin = (password === ADMIN_PASSWORD);
-
-                currentUser = {
-                    name: name,
-                    avatar: selectedEmoji,
-                    gender: gender,
-                    age: age,
-                    isAdmin: isAdmin
-                };
-                saveCurrentUser();
-
-                if (!visitRecorded) {
-                    recordVisit(gender, age);
+                        return c;
+                    });
+                    await postRef.update({ comments: newComments });
+                    input.value = '';
                 }
 
-                refreshAllUI();
-                modal.classList.add('hidden');
+                // 删除帖子 (仅管理员)
+                if (e.target.closest('#deletePostBtn')) {
+                    if (!currentUser.isAdmin) return;
+                    if (confirm('确定删除此帖子吗？')) {
+                        await db.collection('posts').doc('current').delete();
+                    }
+                }
             });
 
-            document.getElementById('editProfileBtn').addEventListener('click', function() {
-                modalName.value = currentUser.name;
-                emojiOptions.forEach(opt => {
-                    if (opt.getAttribute('data-emoji') === currentUser.avatar) {
-                        opt.classList.add('selected');
-                        selectedEmoji = currentUser.avatar;
-                    } else opt.classList.remove('selected');
-                });
-                document.querySelectorAll('input[name="modalGender"]').forEach(radio => {
-                    radio.checked = (radio.value === currentUser.gender);
-                });
-                document.getElementById('modalAge').value = currentUser.age;
-                passwordInput.value = '';
-                modal.classList.remove('hidden');
+            // 提交主评论
+            document.addEventListener('click', async function(e) {
+                if (e.target && e.target.id === 'submitCommentBtn') {
+                    if (!post) { alert('帖子不存在'); return; }
+                    const input = document.getElementById('commentInput');
+                    const text = input.value.trim();
+                    if (!text) { alert('评论不能为空'); return; }
+                    const postRef = db.collection('posts').doc('current');
+                    const newComments = [...post.comments, {
+                        id: genId(),
+                        author: currentUser.name,
+                        text: text,
+                        likes: 0,
+                        replies: []
+                    }];
+                    await postRef.update({ comments: newComments });
+                    input.value = '';
+                }
             });
 
-            // ---------- 初始化 ----------
-            if (localStorage.getItem('xiaohongshu_currentUser_v2')) {
+            // 发布帖子 (仅管理员)
+            document.getElementById('publishBtn').addEventListener('click', async function() {
+                if (!currentUser.isAdmin) { alert('只有管理员可以发帖'); return; }
+                const content = document.getElementById('postInput').value.trim();
+                if (!content) {
+                    alert('请填写文字内容');
+                    return;
+                }
+                const newPost = {
+                    text: content,
+                    likes: 0,
+                    views: post ? post.views : 0,
+                    comments: [],
+                    authorName: currentUser.name,
+                    authorAvatar: currentUser.avatar
+                };
+                await db.collection('posts').doc('current').set(newPost);
+                document.getElementById('postInput').value = '';
+            });
+        }
+
+        // ---------- 模态框逻辑 ----------
+        const modal = document.getElementById('setupModal');
+        const modalName = document.getElementById('modalNameInput');
+        const emojiOptions = document.querySelectorAll('.emoji-option');
+        const passwordInput = document.getElementById('adminPassword');
+
+        let selectedEmoji = '👨';
+
+        emojiOptions.forEach(opt => opt.classList.remove('selected'));
+        emojiOptions[0].classList.add('selected');
+        selectedEmoji = '👨';
+
+        emojiOptions.forEach(opt => {
+            opt.addEventListener('click', function() {
+                emojiOptions.forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedEmoji = this.getAttribute('data-emoji');
+            });
+        });
+
+        document.querySelectorAll('input[name="modalGender"]').forEach(radio => {
+            if (radio.value === '男') radio.checked = true;
+        });
+
+        document.getElementById('modalSaveBtn').addEventListener('click', async function() {
+            const name = modalName.value.trim() || '旅行者';
+            const genderRadio = document.querySelector('input[name="modalGender"]:checked');
+            const gender = genderRadio ? genderRadio.value : '男';
+            const age = document.getElementById('modalAge').value;
+            const password = passwordInput.value.trim();
+
+            const isAdmin = (password === ADMIN_PASSWORD);
+
+            currentUser = {
+                name: name,
+                avatar: selectedEmoji,
+                gender: gender,
+                age: age,
+                isAdmin: isAdmin
+            };
+            saveCurrentUser();
+
+            // 记录本次访问
+            await recordVisit(gender, age);
+
+            refreshUserUI();
+            modal.classList.add('hidden');
+        });
+
+        document.getElementById('editProfileBtn').addEventListener('click', function() {
+            modalName.value = currentUser.name;
+            emojiOptions.forEach(opt => {
+                if (opt.getAttribute('data-emoji') === currentUser.avatar) {
+                    opt.classList.add('selected');
+                    selectedEmoji = currentUser.avatar;
+                } else opt.classList.remove('selected');
+            });
+            document.querySelectorAll('input[name="modalGender"]').forEach(radio => {
+                radio.checked = (radio.value === currentUser.gender);
+            });
+            document.getElementById('modalAge').value = currentUser.age;
+            passwordInput.value = '';
+            modal.classList.remove('hidden');
+        });
+
+        // ---------- 初始化 ----------
+        async function init() {
+            // 加载访客统计
+            await loadVisitorsStats();
+
+            // 订阅帖子
+            subscribePost();
+
+            // 如果用户已保存，尝试记录访问（如果还没记录）
+            if (localStorage.getItem('xiaohongshu_currentUser_v3')) {
                 if (!visitRecorded) {
-                    recordVisit(currentUser.gender, currentUser.age);
+                    await recordVisit(currentUser.gender, currentUser.age);
                 }
             } else {
                 modal.classList.remove('hidden');
             }
 
-            refreshAllUI();
+            refreshUserUI();
             setupDelegation();
-            updateStatsPanel();
-        })();
+        }
+
+        init();
     </script>
 </body>
 </html>
